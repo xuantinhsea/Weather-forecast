@@ -51,7 +51,21 @@ export async function fetchForecast({ lat, lon, days = FORECAST_DAYS, signal }) 
   if (!hasAnyValue(raw?.daily?.temperature_2m_max) && !hasAnyValue(raw?.daily?.precipitation_sum)) {
     throw new Error('No forecast is available for this spot. Try a point a little further inland.')
   }
-  return normalize(raw)
+  return normalize(raw, responseTime(res))
+}
+
+/**
+ * When the answer was actually produced.
+ *
+ * Offline, the service worker replays a response it stored earlier, and the
+ * request still resolves successfully — so `Date.now()` would call a day-old
+ * forecast "updated just now". The Date header travels with the cached
+ * response and tells the truth. It is CORS-safelisted, so it is readable here.
+ */
+function responseTime(res) {
+  const header = res.headers.get('date')
+  const parsed = header ? Date.parse(header) : NaN
+  return Number.isNaN(parsed) ? Date.now() : parsed
 }
 
 /**
@@ -59,7 +73,7 @@ export async function fetchForecast({ lat, lon, days = FORECAST_DAYS, signal }) 
  * row-per-day lists the screens actually render. Doing it once here keeps the
  * index-juggling out of every component.
  */
-function normalize(raw) {
+function normalize(raw, fetchedAt = Date.now()) {
   const hours = (raw.hourly?.time ?? []).map((time, i) => ({
     time,
     date: new Date(time),
@@ -82,7 +96,7 @@ function normalize(raw) {
   }))
 
   return {
-    fetchedAt: Date.now(),
+    fetchedAt,
     latitude: raw.latitude,
     longitude: raw.longitude,
     elevation: raw.elevation,

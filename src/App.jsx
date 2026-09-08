@@ -11,7 +11,6 @@ import { useGeolocation } from './hooks/useGeolocation'
 import { loadPlace, savePlace } from './core/storage'
 import { describePoint } from './core/geocode'
 import { getSystem } from './core/units'
-import { timeAgo } from './core/plainLanguage'
 
 export default function App() {
   const [place, setPlaceState] = useState(loadPlace)
@@ -19,7 +18,7 @@ export default function App() {
 
   const { settings, update: updateSettings } = useSettings()
   const online = useOnline()
-  const { forecast, loading, error, stale, refresh } = useForecast(place)
+  const { forecast, loading, error, refresh } = useForecast(place)
   const system = getSystem(settings.units)
 
   const setPlace = useCallback((next) => {
@@ -66,9 +65,9 @@ export default function App() {
 
       <FreshnessBar
         online={online}
-        stale={stale && !!error}
-        updatedLabel={forecast ? timeAgo(forecast.fetchedAt) : null}
         error={error}
+        fetchedAt={forecast?.fetchedAt}
+        onRefresh={refresh}
       />
 
       {/* The scrolling region. overscroll-contain stops a swipe at the end of a

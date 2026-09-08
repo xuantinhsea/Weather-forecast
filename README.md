@@ -56,6 +56,14 @@ the first thing to go. The last forecast is kept on the device and shown with an
 honest "this is not fresh" line, rather than an error page at the moment the
 forecast is most needed.
 
+**Freshness is measured, not assumed.** `navigator.onLine` reports true on a
+Wi-Fi with no route out, so the strip is driven by how old the data actually is.
+And because the service worker replays a stored response when the network is
+gone — which resolves *successfully* — the age comes from the response's own
+`Date` header rather than from `Date.now()` at parse time. Otherwise a day-old
+forecast would announce itself as "updated just now", which is the one thing
+this app must never do.
+
 ## Running it
 
 ```bash

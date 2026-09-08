@@ -6,6 +6,7 @@ import { TempChart } from '../components/charts/TempChart'
 import { upcomingHours } from '../core/openMeteo'
 import { groupIntoBlocks } from '../core/aggregate'
 import { hourLabel, timeAgo } from '../core/plainLanguage'
+import { useNow } from '../hooks/useNow'
 import { formatRain } from '../core/units'
 
 /**
@@ -16,6 +17,7 @@ import { formatRain } from '../core/units'
  * relationship the data does not contain. Two charts, one axis each.
  */
 export function TodayScreen({ forecast, loading, error, system, onRetry }) {
+  const now = useNow()
   const blocks = useMemo(() => {
     if (!forecast) return []
     return groupIntoBlocks(upcomingHours(forecast, 24)).map((b) => ({
@@ -77,7 +79,7 @@ export function TodayScreen({ forecast, loading, error, system, onRetry }) {
       </Card>
 
       <p className="text-base text-muted text-center pb-2">
-        {timeAgo(forecast.fetchedAt)} · Weather data by Open-Meteo
+        {timeAgo(forecast.fetchedAt, now)} · Weather data by Open-Meteo
       </p>
     </div>
   )

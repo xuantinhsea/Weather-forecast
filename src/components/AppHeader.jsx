@@ -1,4 +1,6 @@
 import { WeatherIcon } from './WeatherIcon'
+import { timeAgo } from '../core/plainLanguage'
+import { useNow } from '../hooks/useNow'
 
 /**
  * A single line saying where these numbers are for, plus the refresh.
@@ -47,25 +49,50 @@ export function AppHeader({ place, onRefresh, refreshing, onOpenPlace }) {
   )
 }
 
-/** The offline / stale-data strip. Honest about what the reader is looking at. */
-export function FreshnessBar({ online, stale, updatedLabel, error }) {
-  if (online && !stale && !error) return null
+/**
+ * The freshness strip.
+ *
+ * Driven by how old the data is, not by `navigator.onLine` — which reports true
+ * on a Wi-Fi with no route out, and which Chrome does not reliably flip. Age is
+ * the fact the reader needs either way: an app that shows a day-old forecast as
+ * though it were current is worse than one that admits it cannot reach the
+ * service.
+ */
+const STALE_AFTER = 2 * 60 * 60 * 1000
 
-  const critical = !online || stale
+export function FreshnessBar({ online, error, fetchedAt, onRefresh }) {
+  const now = useNow()
+  const age = fetchedAt ? now - fetchedAt : null
+  const old = age != null && age > STALE_AFTER
+  const label = timeAgo(fetchedAt, now)
+
+  let message = null
+  if (!online) {
+    message = `No internet. ${label ? `Showing what we saved — ${label.replace(/^Updated /, 'updated ')}.` : 'Showing the last forecast we saved.'}`
+  } else if (error) {
+    message = `Could not reach the weather service. ${label ? `${label}.` : 'Showing a saved forecast.'}`
+  } else if (old) {
+    message = `${label}. Press Update for the latest.`
+  }
+  if (!message) return null
+
   return (
     <div
       role="status"
-      className={`shrink-0 px-4 py-2.5 flex items-center gap-2.5 border-b-2
-                  ${critical ? 'bg-temp-soft border-warning' : 'bg-sunken border-hairline'}`}
+      className="shrink-0 px-4 py-2.5 flex items-center gap-2.5 border-b-2 bg-temp-soft border-warning"
     >
-      <WeatherIcon name="cloud" size="1.4rem" className="text-ink-2" />
-      <p className="text-base font-semibold text-ink leading-tight">
-        {!online
-          ? `No internet. ${updatedLabel ? `Showing what we saved — ${updatedLabel.toLowerCase()}.` : 'Showing the last forecast we saved.'}`
-          : stale
-            ? `Could not reach the weather service. ${updatedLabel ? updatedLabel : 'Showing a saved forecast'}.`
-            : error}
-      </p>
+      <WeatherIcon name="cloud" size="1.4rem" className="text-ink-2 shrink-0" />
+      <p className="text-base font-semibold text-ink leading-tight flex-1">{message}</p>
+      {onRefresh && (
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="shrink-0 min-h-[2.6rem] px-3 rounded-lg border-2 border-ink-2
+                     text-base font-bold text-ink active:bg-sunken"
+        >
+          Try again
+        </button>
+      )}
     </div>
   )
 }
