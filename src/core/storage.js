@@ -8,6 +8,9 @@
  * throws outright in a locked-down browser rather than returning null.
  */
 
+// The 'wr.' prefix predates the app's rename and stays put on purpose:
+// changing it would silently discard the saved place and settings of anyone
+// who already has the app installed.
 const KEYS = {
   place: 'wr.place',
   settings: 'wr.settings',
