@@ -167,10 +167,26 @@ Map tiles from [OpenStreetMap](https://www.openstreetmap.org/copyright).
 
 ## Deploying
 
-- **Vercel** — serves from the domain root; `vercel.json` sets the cache headers
-  that stop an installed app pinning itself to an old service worker.
-- **GitHub Pages** — the workflow builds with `VITE_BASE_PATH=/model-spread/`,
-  which also feeds the manifest's `start_url` and `scope`.
+The build is path-relative, so one build works from a domain root, from a
+project subpath, or anywhere else it is served. `VITE_BASE_PATH` still
+overrides it for a host that needs an absolute base, and whatever it ends up
+as feeds the manifest's `start_url` and `scope` — an installed app whose
+start_url sits outside its scope opens in a browser tab instead of standalone.
+
+It cannot be opened as a file. A browser refuses to load an ES module over
+`file://`, treating every script there as cross-origin, so `dist/index.html`
+on the disk says that in the page rather than showing a blank screen.
+
+- **Vercel** — deploys on every push to `main`. `vercel.json` carries the
+  cache headers, and it must stay plain JSON: the schema rejects unknown
+  properties, so a `comment` key there fails the deploy before the build even
+  starts. The two rules worth knowing:
+  - `/sw.js` is never served from cache. Cache it and an installed app can pin
+    itself to an old build forever, with no way back.
+  - `/assets/*` is immutable by construction — every filename carries a hash.
+- **GitHub Pages** — the workflow builds on a push to `main`. It sets
+  `VITE_BASE_PATH=/model-spread/`, which the relative base no longer requires;
+  it is harmless, and correct if the repo name changes.
 
 ## Not in this version
 
