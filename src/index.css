@@ -1,0 +1,187 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Colours come from a validated palette: the two data hues (warm orange for
+   temperature, blue for rain) clear the CVD-separation, normal-vision and
+   3:1 contrast gates against both surfaces, and the four status colours are
+   reserved — they never stand in for a data series. Dark values are chosen for
+   the dark surface, not flipped from the light ones.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-plane: #f9f9f7;
+  --color-surface: #ffffff;
+  --color-sunken: #f1f0ec;
+  --color-ink: #0b0b0b;
+  --color-ink-2: #42413e;
+  --color-muted: #6c6a64;
+  --color-line: #d8d7cf;
+  --color-hairline: #e8e7e0;
+
+  --color-brand: #1c5cab;
+  --color-brand-ink: #ffffff;
+
+  --color-temp: #eb6834;
+  --color-temp-soft: #fbe4d9;
+  --color-rain: #2a78d6;
+  --color-rain-soft: #d9e7fa;
+
+  --color-calm: #256abf;
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  /* Everything is sized in rem so the text-size control scales the whole
+     layout — buttons, gaps and charts included — not just the letters. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Dark mode. Declared under both the OS media query and the explicit
+   [data-theme] stamp so an in-app choice wins in either direction. */
+:root {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-plane: #0d0d0d;
+    --color-surface: #1a1a19;
+    --color-sunken: #232322;
+    --color-ink: #ffffff;
+    --color-ink-2: #d5d4cb;
+    --color-muted: #a3a29a;
+    --color-line: #3a3a37;
+    --color-hairline: #2c2c2a;
+
+    --color-brand: #3987e5;
+    --color-brand-ink: #06162b;
+
+    --color-temp: #f07a4b;
+    --color-temp-soft: #3a2318;
+    --color-rain: #5598e7;
+    --color-rain-soft: #14263c;
+
+    --color-calm: #5598e7;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-plane: #0d0d0d;
+  --color-surface: #1a1a19;
+  --color-sunken: #232322;
+  --color-ink: #ffffff;
+  --color-ink-2: #d5d4cb;
+  --color-muted: #a3a29a;
+  --color-line: #3a3a37;
+  --color-hairline: #2c2c2a;
+
+  --color-brand: #3987e5;
+  --color-brand-ink: #06162b;
+
+  --color-temp: #f07a4b;
+  --color-temp-soft: #3a2318;
+  --color-rain: #5598e7;
+  --color-rain-soft: #14263c;
+
+  --color-calm: #5598e7;
+}
+
+/* ---------------------------------------------------------------------------
+   Base.
+
+   The root font size is 18px, not the browser's 16px: this app is read at
+   arm's length by people who do not want to hunt for reading glasses. The
+   --text-scale factor is set by the in-app size control and multiplies it, so
+   one setting grows every rem-sized thing on screen at once.
+--------------------------------------------------------------------------- */
+html {
+  font-size: calc(18px * var(--text-scale, 1));
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-plane);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.45;
+  /* Bounce-scrolling past the end of a fixed app shell exposes the page
+     background and looks broken on iOS. */
+  overscroll-behavior-y: none;
+}
+
+/* Tap highlights are a grey rectangle that fires on every scroll; the buttons
+   have their own :active state instead. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A focus ring that survives on every background, for anyone driving the app
+   from a keyboard or a switch. */
+:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Respect a reader who has asked the OS to stop animating things. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   App shell.
+
+   100vh on a phone is the LARGE viewport: the browser's toolbars overlay its
+   bottom, which would hide the navigation bar permanently. 100dvh tracks the
+   area actually on screen. The two rules are ordered @supports rather than
+   stacked declarations because the CSS minifier dedupes same-property
+   declarations and silently drops the fallback.
+--------------------------------------------------------------------------- */
+.app-shell { height: 100vh; }
+@supports (height: 100dvh) {
+  .app-shell { height: 100dvh; }
+}
+
+/* Keep content clear of the notch and the iOS home indicator. */
+.safe-top { padding-top: env(safe-area-inset-top, 0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: var(--color-sunken);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+/* Leaflet's own controls are built for a mouse. On a phone they are targets
+   nobody over sixty can hit reliably. */
+.leaflet-control-zoom a {
+  width: 2.4rem !important;
+  height: 2.4rem !important;
+  line-height: 2.35rem !important;
+  font-size: 1.3rem !important;
+  color: var(--color-ink) !important;
+  background: var(--color-surface) !important;
+  border-color: var(--color-line) !important;
+}
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent) !important;
+  color: var(--color-muted) !important;
+}
+.leaflet-control-attribution a { color: var(--color-muted) !important; }
+
+/* The horizontal hour strip scrolls; hide the scrollbar but keep the axis. */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
