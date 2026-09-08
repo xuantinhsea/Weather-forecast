@@ -56,8 +56,15 @@ export function loadCachedForecast(lat, lon) {
   if (!entry || entry.key !== cacheKey(lat, lon)) return null
   const data = entry.data
   if (!Array.isArray(data?.days) || !data.series) return null   // an older shape
-  // Dates do not survive JSON, so rebuild the ones the screens rely on.
-  return { ...data, days: data.days.map((d) => new Date(d)) }
+  // Dates do not survive JSON, so rebuild every one the screens rely on.
+  // Missing `hours` here is what blanked the app on the second visit: the
+  // hourly card calls toLocaleTimeString on these, and a revived string has
+  // no such method, so the whole tree threw on render.
+  return {
+    ...data,
+    days: data.days.map((d) => new Date(d)),
+    hours: Array.isArray(data.hours) ? data.hours.map((h) => new Date(h)) : [],
+  }
 }
 
 export function saveCachedForecast(lat, lon, data) {
