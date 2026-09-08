@@ -18,7 +18,7 @@ import { describeSpread } from '../core/ensemble'
  * is the shape, the list is the data, and no value is ever available only as a
  * coloured position.
  */
-export function DaySpread({ series, index, unit, kind, pinned, onPin }) {
+export function DaySpread({ series, index, unit, kind, pinned, onPin, showList = true, countNoun = 'day' }) {
   const stat = series.stats[index]
 
   const rows = useMemo(() => {
@@ -49,12 +49,13 @@ export function DaySpread({ series, index, unit, kind, pinned, onPin }) {
         <ToneBadge tone={band?.tone ?? 'calm'}>{band?.label}</ToneBadge>
       </div>
       <p className="text-base text-muted mt-1">
-        {stat.count === 1 ? '1 model reaches this day' : `${stat.count} models reach this day`}
+        {stat.count === 1 ? `1 model reaches this ${countNoun}` : `${stat.count} models reach this ${countNoun}`}
         {' · middle model '}{fmt(stat.median, kind)}{unit}
       </p>
 
       <DotStrip rows={rows} stat={stat} kind={kind} best={best} pinned={pinned} />
 
+      {showList && (
       <ul className="list-none p-0 m-0 mt-4">
         {rows.map((m, i) => {
           const isPinned = m.id === pinned
@@ -89,6 +90,7 @@ export function DaySpread({ series, index, unit, kind, pinned, onPin }) {
           )
         })}
       </ul>
+      )}
     </div>
   )
 }

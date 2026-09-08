@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Card, CardTitle, Button, Notice, Spinner } from '../components/ui'
 import { SpreadChart } from '../components/charts/SpreadChart'
 import { DaySpread } from '../components/DaySpread'
-import { VARIABLES, variableById, todayIndex, worstDisagreement, describeSpread, robustCeiling } from '../core/ensemble'
+import { VARIABLES, variableById, todayIndex, nowIndex, worstDisagreement, describeSpread, robustCeiling } from '../core/ensemble'
 import { useNow } from '../hooks/useNow'
 import { timeAgo } from '../core/plainLanguage'
 
@@ -14,9 +14,18 @@ import { timeAgo } from '../core/plainLanguage'
  * that looks reassuring is exactly how a reader ends up unprepared for the day
  * the models could not settle.
  */
+// Formatters are defined once at module scope rather than inline: the chart
+// memoises on their identity, and a new arrow function each render would rebuild
+// its options every time.
+const dayTick = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+const dayFull = (d) => d?.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) ?? ''
+const hourTick = (d) => d.toLocaleTimeString(undefined, { hour: 'numeric' })
+const hourFull = (d) => d?.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) ?? ''
+
 export function SpreadScreen({ data, loading, error, onRetry, pinned, onPin }) {
   const [variableId, setVariableId] = useState(VARIABLES[0].id)
   const [selected, setSelected] = useState(null)
+  const [selectedHour, setSelectedHour] = useState(null)
   const now = useNow()
 
   const variable = variableById(variableId)
@@ -27,6 +36,9 @@ export function SpreadScreen({ data, loading, error, onRetry, pinned, onPin }) {
     () => (series ? worstDisagreement(series, data.dayKeys, todayIdx) : null),
     [series, data, todayIdx],
   )
+
+  const hourSeries = data?.hourly?.[variable.hourly] ?? null
+  const hourIdx = useMemo(() => (data ? nowIndex(data.hourlyKeys) : -1), [data])
 
   if (loading && !data) return <Spinner label="Asking every model…" />
 
@@ -51,6 +63,8 @@ export function SpreadScreen({ data, loading, error, onRetry, pinned, onPin }) {
   const clipped = variable.kind === 'rain'
     ? series.stats.filter((s) => s.max != null && s.max > robustCeiling(series.stats)).length
     : 0
+  // Default the hourly selection to the hour we are in, not midnight.
+  const hourSelectedIndex = selectedHour ?? (hourIdx >= 0 ? hourIdx : 0)
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -107,8 +121,11 @@ export function SpreadScreen({ data, loading, error, onRetry, pinned, onPin }) {
 
         <SpreadChart
           series={series}
-          days={data.days}
-          todayIdx={todayIdx}
+          points={data.days}
+          markerIndex={todayIdx}
+          markerLabel="today"
+          tickFormat={dayTick}
+          fullFormat={dayFull}
           unit={variable.unit}
           kind={variable.kind}
           pinned={pinned}
@@ -148,6 +165,59 @@ export function SpreadScreen({ data, loading, error, onRetry, pinned, onPin }) {
           onPin={onPin}
         />
       </Card>
+
+      {/* --- today, hour by hour --------------------------------------- */}
+      {hourSeries && hourSeries.members.length > 0 && (
+        <Card>
+          <CardTitle hint={
+            variable.kind === 'temp'
+              ? 'Hourly data has no daily high or low — this is the temperature at each hour'
+              : 'How much falls in each hour, not the running total'
+          }>
+            {variable.hourlyLabel}, today
+          </CardTitle>
+
+          <SpreadChart
+            series={hourSeries}
+            points={data.hours}
+            markerIndex={hourIdx}
+            markerLabel="now"
+            tickFormat={hourTick}
+            fullFormat={hourFull}
+            unit={variable.unit}
+            kind={variable.kind}
+            pinned={pinned}
+            selectedIndex={hourSelectedIndex}
+            onSelectDay={setSelectedHour}
+            height="14rem"
+            maxTicks={6}
+            rainFloor={2}
+          />
+
+          <p className="text-base text-muted mt-3">
+            {hourSeries.members.length} models cover today by the hour
+            {hourSeries.members.length !== series.members.length &&
+              ` — ${series.members.length} reach the day-by-day chart above`}.
+            Tap an hour.
+          </p>
+
+          <div className="mt-4 pt-4 border-t border-hairline">
+            <p className="text-lg font-bold text-ink mb-2">
+              {hourFull(data.hours[hourSelectedIndex])}
+            </p>
+            <DaySpread
+              series={hourSeries}
+              index={hourSelectedIndex}
+              unit={variable.unit}
+              kind={variable.kind}
+              pinned={pinned}
+              onPin={onPin}
+              showList={false}
+              countNoun="hour"
+            />
+          </div>
+        </Card>
+      )}
 
       <p className="text-base text-muted text-center pb-2">
         {timeAgo(data.fetchedAt, now)} · Forecasts by Open-Meteo

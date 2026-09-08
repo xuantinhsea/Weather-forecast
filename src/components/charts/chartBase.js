@@ -125,12 +125,33 @@ export function labelsFit(ctx, chart, texts, gap) {
   return widest + gap <= columnWidth
 }
 
+/**
+ * A tick interval of about a quarter of the range, snapped to 1, 2, 2.5 or 5
+ * times a power of ten.
+ *
+ * A fixed step cannot serve both charts: 10 mm is right for daily totals that
+ * run to 60, and hopeless for hourly rain where the whole day peaks at 1.5 mm
+ * and every value collapses onto the zero line.
+ */
+export function niceStep(range) {
+  if (!(range > 0)) return 1
+  const raw = range / 4
+  const mag = 10 ** Math.floor(Math.log10(raw))
+  const norm = raw / mag
+  const snapped = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10
+  return snapped * mag
+}
+
 /** Rounds an axis bound outward to a multiple of `step`, so ticks land on
  *  numbers a reader recognises (20°, 25°, 30°) rather than wherever the data
- *  happened to stop. */
-export function niceBounds(min, max, step = 5) {
+ *  happened to stop. `step` defaults to one derived from the range itself. */
+export function niceBounds(min, max, step) {
+  const s = step ?? niceStep(max - min)
+  // Multiplying back out reintroduces binary-float noise (0.30000000000000004),
+  // which then shows up verbatim in the tick labels.
+  const round = (v) => Number((Math.round(v / s) * s).toPrecision(12))
   return {
-    min: Math.floor(min / step) * step,
-    max: Math.ceil(max / step) * step,
+    min: round(Math.floor(min / s) * s),
+    max: round(Math.ceil(max / s) * s),
   }
 }

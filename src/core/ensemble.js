@@ -15,13 +15,19 @@ export const PAST_DAYS = 14
 export const FUTURE_DAYS = 16
 
 export const VARIABLES = [
-  { id: 'precipitation_sum',   label: 'Rain',              short: 'Rain', unit: ' mm', kind: 'rain' },
-  { id: 'temperature_2m_max',  label: 'Daytime high',      short: 'High', unit: '°',  kind: 'temp' },
-  { id: 'temperature_2m_min',  label: 'Overnight low',     short: 'Low',  unit: '°',  kind: 'temp' },
+  { id: 'precipitation_sum',  label: 'Rain',          short: 'Rain', unit: ' mm', kind: 'rain',
+    hourly: 'precipitation',   hourlyLabel: 'Rain each hour' },
+  { id: 'temperature_2m_max', label: 'Daytime high',  short: 'High', unit: '°',   kind: 'temp',
+    hourly: 'temperature_2m',  hourlyLabel: 'Temperature each hour' },
+  { id: 'temperature_2m_min', label: 'Overnight low', short: 'Low',  unit: '°',   kind: 'temp',
+    hourly: 'temperature_2m',  hourlyLabel: 'Temperature each hour' },
 ]
 export const variableById = (id) => VARIABLES.find((v) => v.id === id) ?? VARIABLES[0]
 
 const DAILY = VARIABLES.map((v) => v.id).join(',')
+// Deduplicated: High and Low share one hourly variable.
+const HOURLY_VARS = [...new Set(VARIABLES.map((v) => v.hourly))]
+const HOURLY = HOURLY_VARS.join(',')
 
 /**
  * Open-Meteo can answer 200 with a body containing bare `nan` tokens, which is
@@ -65,15 +71,27 @@ function baseParams(lat, lon) {
 }
 
 /**
- * One request for the sixteen models, one for Best Match.
+ * Four requests, run together.
  *
- * They cannot be combined: passing best_match alongside other ids makes the API
- * reject the entire call, so a single batch would fail outright.
+ * Best Match cannot ride along with the other ids — passing it alongside them
+ * makes the API reject the entire call — so it is always its own request. The
+ * daily and hourly windows are separate calls because they want different
+ * spans: thirty days of daily totals is 10 KB, but the same span hourly is over
+ * 100 KB. Today alone, hourly, is 5 KB, which is worth having.
  */
 export async function fetchEnsemble({ lat, lon, signal }) {
-  const [batch, best] = await Promise.all([
+  const hourlyParams = () => ({
+    latitude: String(lat), longitude: String(lon), timezone: 'auto',
+    forecast_days: '1', hourly: HOURLY,
+  })
+
+  const [batch, best, hourlyBatch, hourlyBest] = await Promise.all([
     getJson(new URLSearchParams({ ...baseParams(lat, lon), models: MODEL_IDS.join(',') }), signal),
     getJson(new URLSearchParams({ ...baseParams(lat, lon), models: BEST_MATCH }), signal).catch(() => null),
+    // The hourly pair is best-effort: the thirty-day view is the app, and a
+    // failure here must not take it down with it.
+    getJson(new URLSearchParams({ ...hourlyParams(), models: MODEL_IDS.join(',') }), signal).catch(() => null),
+    getJson(new URLSearchParams({ ...hourlyParams(), models: BEST_MATCH }), signal).catch(() => null),
   ])
 
   const days = batch?.daily?.time ?? []
@@ -87,7 +105,30 @@ export async function fetchEnsemble({ lat, lon, signal }) {
     days: days.map(localDate),
     dayKeys: days,
     // One entry per variable, each holding every model's series for it.
-    series: Object.fromEntries(VARIABLES.map((v) => [v.id, buildSeries(batch, best, v.id, days.length)])),
+    series: Object.fromEntries(VARIABLES.map((v) => [
+      v.id,
+      buildSeries(batch, best, v.id, days.length, 'daily',
+        duplicateGroups(batch, 'daily', 'temperature_2m_max')),
+    ])),
+    ...buildHourly(hourlyBatch, hourlyBest),
+  }
+}
+
+/** Today's 24 hours, in the same shape as the daily series so one chart and one
+ *  summary component can render both. */
+function buildHourly(batch, best) {
+  const times = batch?.hourly?.time ?? []
+  if (!times.length) return { hours: [], hourlyKeys: [], hourly: null }
+  return {
+    hours: times.map((t) => new Date(t)),
+    hourlyKeys: times,
+    hourly: Object.fromEntries(
+      HOURLY_VARS.map((id) => [
+        id,
+        buildSeries(batch, best, id, times.length, 'hourly',
+          duplicateGroups(batch, 'hourly', 'temperature_2m')),
+      ]),
+    ),
   }
 }
 
@@ -102,56 +143,86 @@ function localDate(isoDay) {
 }
 
 /**
- * Collects each model's series for one variable, drops the models that returned
- * nothing, and collapses the ones that returned *the same thing*.
+ * Which models are actually the same model here.
  *
- * That last step is not tidying. Asked about Hanoi, MET Nordic, KNMI and DMI
- * each return a byte-identical series, because outside their own region they
- * all fall back to the same global model. Counting them as three agreeing
- * forecasts would manufacture confidence that does not exist — which is exactly
- * the error this app is built to prevent.
+ * Duplication is a property of the model pair at this location — outside its
+ * region a regional model serves a global one, and several serve the *same*
+ * global one — so it is decided once, from one signature variable, and then
+ * applied to every variable.
+ *
+ * Deciding it per-variable was wrong in a way that mattered: over a single day,
+ * several models forecast zero rain for all 24 hours, producing byte-identical
+ * precipitation series. Those models genuinely and independently agree that it
+ * will not rain, and collapsing them understated the agreement count.
+ * Temperature is the signature because it is continuous and effectively never
+ * identical between two genuinely different models.
  */
-function buildSeries(batch, best, variable, dayCount) {
-  const present = []
+function duplicateGroups(batch, block, signatureVar) {
+  const bySignature = new Map()
   for (const model of MODELS) {
-    const values = batch.daily?.[`${variable}_${model.id}`]
-    if (!Array.isArray(values)) continue
-    if (!values.some((v) => v != null)) continue      // silent all-null: no data here
-    present.push({ ...model, values })
+    const values = batch[block]?.[`${signatureVar}_${model.id}`]
+    if (!Array.isArray(values) || !values.some((v) => v != null)) continue
+    const key = values.map((v) => (v == null ? '' : v)).join('|')
+    if (bySignature.has(key)) bySignature.get(key).push(model.id)
+    else bySignature.set(key, [model.id])
+  }
+  // model id -> the ids it is identical to (itself first).
+  const groupOf = new Map()
+  for (const ids of bySignature.values()) {
+    for (const id of ids) groupOf.set(id, ids)
+  }
+  return groupOf
+}
+
+/**
+ * Collects each model's series for one variable, drops the models that returned
+ * nothing, and folds together the ones the signature says are the same model.
+ *
+ * Counting a regional model's global fallback as a separate forecast would
+ * manufacture confidence that does not exist — which is exactly the error this
+ * app is built to prevent.
+ */
+function buildSeries(batch, best, variable, count, block = 'daily', groupOf = new Map()) {
+  const has = (id) => {
+    const v = batch[block]?.[`${variable}_${id}`]
+    return Array.isArray(v) && v.some((x) => x != null)
   }
 
-  // Group by the exact values returned. Identical series are one opinion.
-  const groups = new Map()
-  for (const entry of present) {
-    const key = entry.values.map((v) => (v == null ? '' : v)).join('|')
-    if (groups.has(key)) groups.get(key).push(entry)
-    else groups.set(key, [entry])
+  const members = []
+  const claimed = new Set()
+  for (const model of MODELS) {
+    if (claimed.has(model.id) || !has(model.id)) continue
+
+    // Everyone this model is identical to, that also carries this variable.
+    const group = (groupOf.get(model.id) ?? [model.id]).filter(has)
+    for (const id of group) claimed.add(id)
+
+    const others = group.filter((id) => id !== model.id).map((id) => {
+      const m = MODELS.find((x) => x.id === id)
+      return { id, label: m.label, org: m.org }
+    })
+
+    members.push({
+      id: model.id,
+      label: model.label,
+      org: model.org,
+      scope: model.scope,
+      reach: model.reach,
+      values: batch[block][`${variable}_${model.id}`],
+      duplicates: others,
+    })
   }
 
-  const members = [...groups.values()].map((group) => ({
-    // The first member names the group; the rest are recorded as aliases so the
-    // Models screen can say plainly why they are not listed separately.
-    id: group[0].id,
-    label: group[0].label,
-    org: group[0].org,
-    scope: group[0].scope,
-    reach: group[0].reach,
-    values: group[0].values,
-    duplicates: group.slice(1).map((m) => ({ id: m.id, label: m.label, org: m.org })),
-  }))
-
-  const bestValues = best?.daily?.[variable] ?? null
+  const bestValues = best?.[block]?.[variable] ?? null
 
   return {
     variable,
     members,
     bestMatch: Array.isArray(bestValues) && bestValues.some((v) => v != null) ? bestValues : null,
     // Models that answered with nothing at all, kept so the app can say so.
-    missing: MODELS.filter((m) => {
-      const v = batch.daily?.[`${variable}_${m.id}`]
-      return !Array.isArray(v) || !v.some((x) => x != null)
-    }).map((m) => ({ id: m.id, label: m.label, org: m.org, scope: m.scope })),
-    stats: computeStats(members, dayCount),
+    missing: MODELS.filter((m) => !has(m.id))
+      .map((m) => ({ id: m.id, label: m.label, org: m.org, scope: m.scope })),
+    stats: computeStats(members, count),
   }
 }
 
@@ -272,4 +343,13 @@ export function robustCeiling(stats, { percentile = 0.85, headroom = 1.2, floor 
   const medians = stats.map((s) => s.median).filter((v) => v != null)
   const medianTop = medians.length ? Math.max(...medians) : 0
   return Math.max(p * headroom, medianTop * 1.15, floor)
+}
+
+/** Index of the hour we are currently inside, for the "now" rule on the hourly
+ *  chart. Returns -1 when the series is not today's. */
+export function nowIndex(hourKeys) {
+  if (!hourKeys?.length) return -1
+  const now = new Date()
+  const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:00`
+  return hourKeys.indexOf(stamp)
 }

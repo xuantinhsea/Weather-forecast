@@ -18,21 +18,33 @@ which remains the full desktop research tool.
   Open-Meteo's own Best Match dashed over the top. A vertical rule marks today,
   so a fortnight of history sits directly against a fortnight of forecast. Tap
   any day.
+- **Today, hour by hour** — the same encoding over today's 24 hours, with the
+  rule on the current hour instead of today. This is where models diverge most
+  visibly: they can agree on a day's total and still disagree about whether it
+  arrives at breakfast or at four in the afternoon. Tap any hour.
 - **Models** — the roster. Which of the sixteen answered here, how many days each
   actually reaches, today's value, and how far it sits from the middle. Tap one
   to draw it on the chart.
 - **Place** — GPS, town search, or a tap on the map.
 
-Three variables: daily rain total, daytime high, overnight low.
+Three variables: daily rain total, daytime high, overnight low. Hourly data has
+no daily maximum or minimum, so High and Low both resolve to the temperature at
+each hour, and the card says so rather than implying an hourly high.
 
 ## The three things that make it honest
 
-**Identical models are counted once.** Ask about Hanoi and MET Nordic, KNMI and
-DMI return *byte-identical* series, because outside their own region they all
-fall back to the same global model. Counting them as three agreeing forecasts
-would manufacture confidence that does not exist. `ensemble.js` groups members by
-their exact values and folds duplicates together; the Models screen says which
-ones and why. At Oslo the same three are genuinely distinct and all count.
+**Identical models are counted once — but only when they really are the same
+model.** Ask about Hanoi and MET Nordic, KNMI and DMI return *byte-identical*
+series, because outside their own region they all fall back to the same global
+model. Counting them as three agreeing forecasts would manufacture confidence
+that does not exist. At Oslo the same three are genuinely distinct and all count.
+
+Duplication is decided **once, from a signature variable** (temperature), then
+applied to every variable. Deciding it per-variable was wrong in a way that
+mattered: over a single day several models forecast zero rain for all 24 hours,
+producing identical precipitation series — and those models genuinely and
+independently agree that it will not rain. Folding them collapsed the hourly rain
+count from 10 models to 7 and understated real agreement.
 
 **Outliers are shown, not smoothed.** Rainfall is violently skewed: one model can
 forecast 330 mm for a single day at Hanoi while the rest sit under 10 mm. Scaling
@@ -89,8 +101,10 @@ these have simply stopped.
 - It also answers 200 with an all-null series rather than an error when a model
   has no data for a point. A successful fetch is not the same as usable data.
 - All sixteen models, three daily variables, thirty days is about **10 KB** and
-  under a second. The same request hourly is ~110 KB, which is why the app is
-  daily.
+  under a second. The same span hourly is ~110 KB — but today alone, hourly, is
+  **5 KB**, which is why the app fetches the month daily and the day hourly.
+- The hourly window can carry **more** models than the daily one: at Hanoi twelve
+  models return hourly data where ten produce daily aggregates.
 
 ## Design rules
 
@@ -160,6 +174,5 @@ Map tiles from [OpenStreetMap](https://www.openstreetmap.org/copyright).
 
 ## Not in this version
 
-Hourly resolution (the data is there, at ~110 KB a request), ensemble members
-within a single model, and flood-specific series such as river discharge and
-return periods.
+Hourly resolution beyond today, ensemble members within a single model, and
+flood-specific series such as river discharge and return periods.
