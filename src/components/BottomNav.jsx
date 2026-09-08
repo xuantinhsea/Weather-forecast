@@ -8,18 +8,16 @@
  */
 
 const ICONS = {
-  today: (
-    <g>
-      <circle cx="12" cy="12" r="4" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none">
-        <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
-      </g>
+  // A narrow band opening into a wide one: the spread of the models over time.
+  spread: (
+    <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <path d="M3 12h4l4-6 4 12 2-4h4" />
     </g>
   ),
-  days: (
-    <g stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" fill="none">
-      <rect x="3.2" y="5" width="17.6" height="16" rx="3" />
-      <path d="M3.2 10h17.6M8 3v4M16 3v4" strokeLinecap="round" />
+  // Stacked rows: the model list.
+  models: (
+    <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none">
+      <path d="M4 7h16M4 12h16M4 17h10" />
     </g>
   ),
   place: (
@@ -32,8 +30,8 @@ const ICONS = {
 }
 
 const TABS = [
-  { id: 'today', label: 'Today' },
-  { id: 'days', label: '7 days' },
+  { id: 'spread', label: 'Spread' },
+  { id: 'models', label: 'Models' },
   { id: 'place', label: 'Place' },
 ]
 

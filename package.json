@@ -1,9 +1,9 @@
 {
-  "name": "weather-ready",
+  "name": "model-spread",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "A large-type, plain-language rain and temperature forecast you can install on a phone.",
+  "description": "Sixteen weather models, side by side, on a phone — two weeks behind and sixteen days ahead.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

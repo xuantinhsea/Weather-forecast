@@ -112,9 +112,10 @@ export function PlaceScreen({ place, onPlaceChange, settings, onSettingsChange }
       <Card>
         <CardTitle>About</CardTitle>
         <p className="text-lg text-ink-2">
-          Weather Ready shows rain and temperature in plain words, for the week ahead.
-          It keeps the last forecast on your phone, so it still works when the
-          signal does not.
+          Model Spread runs the same question past sixteen weather models at
+          once and shows you where they disagree — over the past two weeks and
+          the next sixteen days. It keeps the last answer on your phone, so it
+          still works when the signal does not.
         </p>
         <p className="text-base text-muted mt-3">
           Forecasts from Open-Meteo. Map by OpenStreetMap.

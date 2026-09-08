@@ -51,12 +51,10 @@ const cacheKey = (lat, lon) => `${lat.toFixed(2)},${lon.toFixed(2)}`
 export function loadCachedForecast(lat, lon) {
   const entry = read(KEYS.forecast, null)
   if (!entry || entry.key !== cacheKey(lat, lon)) return null
+  const data = entry.data
+  if (!Array.isArray(data?.days) || !data.series) return null   // an older shape
   // Dates do not survive JSON, so rebuild the ones the screens rely on.
-  return {
-    ...entry.data,
-    hours: entry.data.hours.map((h) => ({ ...h, date: new Date(h.date) })),
-    days: entry.data.days.map((d) => ({ ...d, date: new Date(d.date) })),
-  }
+  return { ...data, days: data.days.map((d) => new Date(d)) }
 }
 
 export function saveCachedForecast(lat, lon, data) {

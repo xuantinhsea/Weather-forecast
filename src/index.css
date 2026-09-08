@@ -23,6 +23,18 @@
   --color-brand: #1c5cab;
   --color-brand-ink: #ffffff;
 
+  /* The ensemble band is neutral grey on purpose: it stands for "the models,
+     undifferentiated". Hue is reserved for the three things that have names —
+     the middle model, Best Match, and whichever model the reader has pinned.
+     Those three clear the CVD, normal-vision and contrast gates as an
+     all-pairs set in both modes, which is what overlapping lines require. */
+  --color-band: #eceae2;
+  --color-band-inner: #c0bdad;
+  --color-selected: #dbe8f8;
+  --color-median: #2a78d6;
+  --color-best: #eb6834;
+  --color-pinned: #1baf7a;
+
   --color-temp: #eb6834;
   --color-temp-soft: #fbe4d9;
   --color-rain: #2a78d6;
@@ -60,6 +72,13 @@
     --color-brand: #3987e5;
     --color-brand-ink: #06162b;
 
+    --color-band: #2b2b28;
+    --color-band-inner: #4d4d46;
+    --color-selected: #1e3350;
+    --color-median: #3987e5;
+    --color-best: #d95926;
+    --color-pinned: #199e70;
+
     --color-temp: #f07a4b;
     --color-temp-soft: #3a2318;
     --color-rain: #5598e7;
@@ -82,6 +101,13 @@
 
   --color-brand: #3987e5;
   --color-brand-ink: #06162b;
+
+  --color-band: #2b2b28;
+  --color-band-inner: #4d4d46;
+  --color-selected: #1e3350;
+  --color-median: #3987e5;
+  --color-best: #d95926;
+  --color-pinned: #199e70;
 
   --color-temp: #f07a4b;
   --color-temp-soft: #3a2318;

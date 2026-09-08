@@ -31,7 +31,7 @@ jobs:
           # Pages serves the site from /<repo>/, and the PWA manifest's
           # start_url and scope are derived from this. Vercel serves from the
           # domain root and leaves it unset.
-          VITE_BASE_PATH: /weather-ready/
+          VITE_BASE_PATH: /model-spread/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

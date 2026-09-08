@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // base is '/' on Vercel; on GitHub Pages it must match the repo name, so CI
-// sets VITE_BASE_PATH=/weather-ready/. The manifest's scope/start_url below
+// sets VITE_BASE_PATH=/model-spread/. The manifest's scope/start_url below
 // are derived from it for the same reason — an installed app whose start_url
 // sits outside its scope opens in a browser tab instead of standalone.
 const base = process.env.VITE_BASE_PATH ?? '/'
@@ -18,9 +18,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Weather Ready — Rain and Temperature',
-        short_name: 'Weather Ready',
-        description: 'Large, plain-language rain and temperature forecasts for the days ahead.',
+        name: 'Model Spread — 16 forecast models',
+        short_name: 'Model Spread',
+        description: 'Sixteen forecast models side by side: where they agree, where they do not, and how far each one reaches.',
         lang: 'en',
         start_url: base,
         scope: base,
