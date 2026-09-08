@@ -6,6 +6,7 @@
   "description": "Sixteen weather models, side by side, on a phone — two weeks behind and sixteen days ahead.",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run icons",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

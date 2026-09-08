@@ -20,5 +20,27 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <!-- Not a module on purpose: an inline classic script is the only thing
+         that still runs on a page opened as a file. The app itself is an ES
+         module, and a browser refuses to load one off the disk — it treats
+         every file:// script as cross-origin — so without this the page is
+         blank with nothing but a CORS line in the console to explain it. -->
+    <script>
+      if (location.protocol === 'file:') {
+        document.getElementById('root').innerHTML = [
+          '<div style="max-width:34rem;margin:3rem auto;padding:0 1.5rem;font:16px/1.6 ' +
+            'system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a">',
+          '<h1 style="font-size:1.5rem;line-height:1.25;margin:0 0 .75rem">' +
+            'Open this over a web address, not from the disk</h1>',
+          '<p style="margin:0 0 1rem">Model Spread is a web app, and a browser will not ' +
+            'run one that was opened as a file. Nothing is broken — it needs to be served.</p>',
+          '<p style="margin:0 0 .5rem">Run one of these in the project folder, then open ' +
+            'the address it prints:</p>',
+          '<pre style="background:#f1f1ef;border:1px solid #dcdcd8;border-radius:.5rem;' +
+            'padding:.75rem 1rem;overflow-x:auto;margin:0"><code>npm run dev      # while working on it\n' +
+            'npm run preview  # to check the built version</code></pre></div>',
+        ].join('')
+      }
+    </script>
   </body>
 </html>

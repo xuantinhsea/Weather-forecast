@@ -3,11 +3,17 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// base is '/' on Vercel; on GitHub Pages it must match the repo name, so CI
-// sets VITE_BASE_PATH=/model-spread/. The manifest's scope/start_url below
-// are derived from it for the same reason — an installed app whose start_url
-// sits outside its scope opens in a browser tab instead of standalone.
-const base = process.env.VITE_BASE_PATH ?? '/'
+// Relative by default, so one build works wherever it lands: a domain root,
+// a project subpath like GitHub Pages' /model-spread/, or dist/index.html
+// opened straight off the disk. An absolute '/assets/...' resolves against
+// the filesystem root in that last case, and the page comes up blank. A host
+// that needs an absolute base can still set VITE_BASE_PATH.
+//
+// The manifest's scope/start_url below are derived from it either way — an
+// installed app whose start_url sits outside its scope opens in a browser tab
+// instead of standalone. Relative values there resolve against the manifest's
+// own URL, which is the same answer without having to be told the path.
+const base = process.env.VITE_BASE_PATH ?? './'
 
 export default defineConfig({
   base,
